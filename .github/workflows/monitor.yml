@@ -3,7 +3,7 @@ name: Berlin Service Appointment Monitor
 on:
   schedule:
     # Run every 5 minutes during business hours (8 AM to 6 PM, Mon-Fri, Berlin time)
-    - cron: '*/5 8-18 * * 1-5'
+    - cron: '*/10 6-18 * * 1-5'
   workflow_dispatch: # Allow manual triggering
 
 env:
