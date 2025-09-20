@@ -94,6 +94,16 @@ class NotificationManager:
             logger.info(f"GitHub issue created successfully: {issue_url}")
             return True
             
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 403:
+                logger.error(
+                    "GitHub API permission denied. "
+                    "This is normal when running locally. "
+                    "Issues will be created automatically when running in GitHub Actions."
+                )
+            else:
+                logger.error(f"GitHub API error ({e.response.status_code}): {str(e)}")
+            return False
         except Exception as e:
             logger.error(f"Failed to create GitHub issue: {str(e)}")
             return False

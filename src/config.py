@@ -61,6 +61,12 @@ class Config:
                 "No notification methods configured. "
                 "Please set up at least one of: GitHub token, email, or webhook."
             )
+        
+        # Check if running in GitHub Actions vs locally
+        if self.github_token and not os.getenv('GITHUB_ACTIONS'):
+            logger.info("Running locally with GitHub token - issues creation may fail due to permissions")
+        elif os.getenv('GITHUB_ACTIONS'):
+            logger.info("Running in GitHub Actions - full permissions available")
     
     def _log_config(self):
         """Log the current configuration (without sensitive data)."""
