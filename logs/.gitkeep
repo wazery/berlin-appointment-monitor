@@ -1,0 +1,3 @@
+# Logs directory
+# This directory stores log files from the appointment monitor
+*.log
