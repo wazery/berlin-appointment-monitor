@@ -58,10 +58,12 @@ class BerlinServiceScraper:
             locations = self._find_available_locations(soup)
             
             if locations:
-                logger.info(f"Found {len(locations)} locations to check")
+                logger.info(f"Found {len(locations)} specific locations to check")
                 return self._check_locations_for_appointments(locations)
             else:
-                # No locations found, check the main page directly
+                # No specific locations found, check the main page directly
+                # This could happen if the appointment selection is on the same page
+                logger.info("No specific locations found, checking main page for appointments")
                 return self._parse_appointments(soup)
             
         except requests.exceptions.RequestException as e:
@@ -84,48 +86,95 @@ class BerlinServiceScraper:
         locations = []
         
         try:
-            # Look for Standesamt links or buttons
-            location_patterns = [
-                'standesamt',
-                'standort',
-                'location'
-            ]
+            # Look specifically for appointment booking links for Standesamt locations
+            # These often have patterns like "Termin buchen" or "Terminvereinbarung" in the URL
             
-            # Find links that contain location names
-            location_links = soup.find_all('a', href=True)
+            appointment_links = soup.find_all('a', href=True)
             
-            for link in location_links:
-                link_text = link.get_text().strip().lower()
+            for link in appointment_links:
                 href = link.get('href')
+                link_text = link.get_text().strip()
                 
-                # Check if this looks like a Standesamt location
-                if any(pattern in link_text for pattern in location_patterns):
-                    # Make sure it's a valid URL
-                    if href and ('standesamt' in href.lower() or 'standort' in href.lower()):
-                        full_url = href if href.startswith('http') else f"https://service.berlin.de{href}"
-                        
-                        locations.append({
-                            'name': link.get_text().strip(),
-                            'url': full_url
-                        })
-                        
-                        logger.info(f"Found location: {link.get_text().strip()}")
-            
-            # Also look for form options or buttons for location selection
-            location_options = soup.find_all('option', value=True)
-            for option in location_options:
-                option_text = option.get_text().strip()
-                if 'standesamt' in option_text.lower():
+                # Skip if no meaningful text
+                if not link_text or len(link_text) < 5:
+                    continue
+                
+                # Skip email links and generic navigation
+                if '@' in href or 'mailto:' in href:
+                    continue
+                    
+                # Skip generic navigation links
+                if any(skip in link_text.lower() for skip in ['standorte a-z', 'nach behörden', 'weitere standorte']):
+                    continue
+                
+                # Look for actual Standesamt location names or appointment booking links
+                is_standesamt_location = any([
+                    'standesamt' in link_text.lower() and any(district in link_text.lower() for district in [
+                        'marzahn', 'hellersdorf', 'spandau', 'mitte', 'charlottenburg', 'wilmersdorf',
+                        'tempelhof', 'schöneberg', 'neukölln', 'friedrichshain', 'kreuzberg',
+                        'pankow', 'lichtenberg', 'reinickendorf', 'steglitz', 'zehlendorf', 'treptow'
+                    ]),
+                    ('termin' in href.lower() and 'standesamt' in link_text.lower()),
+                    ('buchung' in href.lower() and 'standesamt' in link_text.lower()),
+                    href.startswith('/terminvereinbarung/') and 'standesamt' in link_text.lower()
+                ])
+                
+                if is_standesamt_location:
+                    full_url = href if href.startswith('http') else f"https://service.berlin.de{href}"
+                    
                     locations.append({
-                        'name': option_text,
-                        'url': None,  # Will need form submission
-                        'value': option.get('value')
+                        'name': link_text,
+                        'url': full_url
                     })
                     
-                    logger.info(f"Found location option: {option_text}")
+                    logger.info(f"Found Standesamt location: {link_text}")
+            
+            # If no specific location links found, look for form-based location selection
+            if not locations:
+                # Look for select elements with Standesamt options
+                select_elements = soup.find_all('select')
+                
+                for select in select_elements:
+                    options = select.find_all('option', value=True)
+                    
+                    for option in options:
+                        option_text = option.get_text().strip()
+                        option_value = option.get('value')
+                        
+                        # Skip empty or placeholder options
+                        if not option_value or option_value == '' or 'wählen' in option_text.lower():
+                            continue
+                        
+                        # Look for Standesamt in option text
+                        if 'standesamt' in option_text.lower():
+                            locations.append({
+                                'name': option_text,
+                                'url': None,  # Form-based, will need special handling
+                                'value': option_value,
+                                'form_based': True
+                            })
+                            
+                            logger.info(f"Found Standesamt option: {option_text}")
+            
+            # If still no locations, this might be a page that needs direct form interaction
+            # Look for specific buttons or form elements that suggest appointment booking
+            if not locations:
+                booking_forms = soup.find_all('form')
+                for form in booking_forms:
+                    form_text = form.get_text().lower()
+                    if 'termin' in form_text and 'standesamt' in form_text:
+                        logger.info("Found appointment form that may require direct interaction")
+                        # For now, we'll fall back to checking the main page
+                        break
             
         except Exception as e:
             logger.error(f"Error finding locations: {str(e)}")
+        
+        # Log what we found
+        if locations:
+            logger.info(f"Total locations to check: {len(locations)}")
+        else:
+            logger.info("No specific Standesamt locations found, will check main page")
         
         return locations
     
@@ -323,19 +372,51 @@ class BerlinServiceScraper:
         
         for i, apt in enumerate(appointments, 1):
             message_lines.extend([
-                f"Appointment {i}:",
+                f"📍 Appointment {i}:",
                 f"  Type: {apt.get('type', 'Unknown')}",
-                f"  URL: {apt.get('url', 'N/A')}",
-                f"  Found at: {apt.get('found_at', 'N/A')}",
-                f"  Details: {apt.get('details', 'N/A')}",
+                f"  Location: {apt.get('location', 'Main page')}"
+            ])
+            
+            if apt.get('location'):
+                message_lines.append(f"  🏢 Standesamt: {apt.get('location')}")
+            
+            message_lines.extend([
+                f"  🔗 URL: {apt.get('url', 'N/A')}",
+                f"  ⏰ Found at: {apt.get('found_at', 'N/A')}",
+                f"  📊 Indicators: {apt.get('details', 'N/A')}",
                 ""
             ])
+            
+            # Add technical details
+            if apt.get('enabled_buttons', 0) > 0:
+                message_lines.append(f"  ✅ {apt.get('enabled_buttons')} enabled booking buttons")
+            if apt.get('time_slots', 0) > 0:
+                message_lines.append(f"  🕐 {apt.get('time_slots')} time slots available")
+            if apt.get('calendar_elements', 0) > 0:
+                message_lines.append(f"  📅 {apt.get('calendar_elements')} calendar elements")
+            if apt.get('date_selects', 0) > 0:
+                message_lines.append(f"  📝 {apt.get('date_selects')} date selection forms")
+            
+            message_lines.append("")
         
         message_lines.extend([
-            "🚀 Book your appointment quickly!",
-            f"Direct link: {self.base_url}",
+            "🚀 **Action Required:**",
+            "1. Click the link above",
+            "2. Select your preferred Standesamt location",
+            "3. Choose an available appointment slot",
+            "4. Complete the booking process",
             "",
-            f"Checked at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            "📍 **Available Locations May Include:**",
+            "- Standesamt Marzahn-Hellersdorf",
+            "- Standesamt Spandau", 
+            "- Other Berlin Standesamt offices",
+            "",
+            f"🔍 **Monitoring Details:**",
+            f"- Service: Namensrechtliche Erklärung", 
+            f"- Checked at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            f"- Direct link: {self.base_url}",
+            "",
+            "⚡ **Note:** Book quickly as appointments fill up fast!"
         ])
         
         return "\n".join(message_lines)

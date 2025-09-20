@@ -35,8 +35,15 @@ jobs:
     - name: Run appointment monitor
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # Email notifications (optional)
         NOTIFICATION_EMAIL: ${{ secrets.NOTIFICATION_EMAIL }}
         EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+        # Mobile push notifications (optional - choose one or more)
+        PUSHOVER_TOKEN: ${{ secrets.PUSHOVER_TOKEN }}
+        PUSHOVER_USER: ${{ secrets.PUSHOVER_USER }}
+        PUSHBULLET_TOKEN: ${{ secrets.PUSHBULLET_TOKEN }}
+        NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        # Webhook notifications (optional)
         WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
       run: |
         python src/main.py

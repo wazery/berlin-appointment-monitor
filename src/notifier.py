@@ -27,6 +27,12 @@ class NotificationManager:
         self.github_token = config.github_token
         self.github_repo = config.github_repo
         
+        # Mobile push notification configuration
+        self.pushover_token = config.pushover_token
+        self.pushover_user = config.pushover_user
+        self.pushbullet_token = config.pushbullet_token
+        self.ntfy_topic = config.ntfy_topic
+        
     def send_notification(self, title: str, message: str) -> bool:
         """
         Send notification through all configured channels.
@@ -48,8 +54,14 @@ class NotificationManager:
         if self._send_email(title, message):
             success = True
             
-        # Try webhook notification
-        if self._send_webhook(title, message):
+        # Try mobile push notifications
+        if self._send_pushover(title, message):
+            success = True
+            
+        if self._send_pushbullet(title, message):
+            success = True
+            
+        if self._send_ntfy(title, message):
             success = True
             
         return success
@@ -197,4 +209,114 @@ class NotificationManager:
             
         except Exception as e:
             logger.error(f"Failed to send webhook notification: {str(e)}")
+            return False
+    
+    def _send_pushover(self, title: str, message: str) -> bool:
+        """
+        Send push notification via Pushover.
+        
+        Args:
+            title: Notification title
+            message: Notification message
+            
+        Returns:
+            True if notification was sent successfully
+        """
+        try:
+            if not self.pushover_token or not self.pushover_user:
+                logger.info("Pushover credentials not configured, skipping")
+                return False
+            
+            url = "https://api.pushover.net/1/messages.json"
+            
+            data = {
+                'token': self.pushover_token,
+                'user': self.pushover_user,
+                'title': title,
+                'message': message,
+                'priority': 1,  # High priority
+                'sound': 'bugle'  # Attention-grabbing sound
+            }
+            
+            response = requests.post(url, data=data, timeout=30)
+            response.raise_for_status()
+            
+            logger.info("Pushover notification sent successfully")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to send Pushover notification: {str(e)}")
+            return False
+    
+    def _send_pushbullet(self, title: str, message: str) -> bool:
+        """
+        Send push notification via Pushbullet.
+        
+        Args:
+            title: Notification title
+            message: Notification message
+            
+        Returns:
+            True if notification was sent successfully
+        """
+        try:
+            if not self.pushbullet_token:
+                logger.info("Pushbullet token not configured, skipping")
+                return False
+            
+            url = "https://api.pushbullet.com/v2/pushes"
+            
+            headers = {
+                'Authorization': f'Bearer {self.pushbullet_token}',
+                'Content-Type': 'application/json'
+            }
+            
+            data = {
+                'type': 'note',
+                'title': title,
+                'body': message
+            }
+            
+            response = requests.post(url, json=data, headers=headers, timeout=30)
+            response.raise_for_status()
+            
+            logger.info("Pushbullet notification sent successfully")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to send Pushbullet notification: {str(e)}")
+            return False
+    
+    def _send_ntfy(self, title: str, message: str) -> bool:
+        """
+        Send push notification via ntfy.sh.
+        
+        Args:
+            title: Notification title
+            message: Notification message
+            
+        Returns:
+            True if notification was sent successfully
+        """
+        try:
+            if not self.ntfy_topic:
+                logger.info("ntfy topic not configured, skipping")
+                return False
+            
+            url = f"https://ntfy.sh/{self.ntfy_topic}"
+            
+            headers = {
+                'Title': title,
+                'Priority': 'high',
+                'Tags': 'appointment,berlin'
+            }
+            
+            response = requests.post(url, data=message.encode('utf-8'), headers=headers, timeout=30)
+            response.raise_for_status()
+            
+            logger.info("ntfy notification sent successfully")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to send ntfy notification: {str(e)}")
             return False

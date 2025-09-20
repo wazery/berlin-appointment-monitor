@@ -6,6 +6,10 @@ This module handles loading configuration from environment variables.
 
 import os
 import logging
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +28,13 @@ class Config:
         self.notification_email = os.getenv('NOTIFICATION_EMAIL')
         self.email_password = os.getenv('EMAIL_PASSWORD')
         
-        # Webhook configuration
+        # Mobile push notification configuration
+        self.pushover_token = os.getenv('PUSHOVER_TOKEN')
+        self.pushover_user = os.getenv('PUSHOVER_USER')
+        self.pushbullet_token = os.getenv('PUSHBULLET_TOKEN')
+        self.ntfy_topic = os.getenv('NTFY_TOPIC')
+        
+        # Webhook configuration (Discord, Slack, etc.)
         self.webhook_url = os.getenv('WEBHOOK_URL')
         
         # Scraping configuration
@@ -53,13 +63,16 @@ class Config:
         has_notification = any([
             self.github_token and self.github_repo,
             self.notification_email and self.email_password,
+            self.pushover_token and self.pushover_user,
+            self.pushbullet_token,
+            self.ntfy_topic,
             self.webhook_url
         ])
         
         if not has_notification:
             logger.warning(
                 "No notification methods configured. "
-                "Please set up at least one of: GitHub token, email, or webhook."
+                "Please set up at least one of: GitHub token, email, mobile push (Pushover/Pushbullet/ntfy), or webhook."
             )
         
         # Check if running in GitHub Actions vs locally
@@ -75,6 +88,9 @@ class Config:
         logger.info(f"  GitHub repo: {self.github_repo or 'Not configured'}")
         logger.info(f"  GitHub token: {'Configured' if self.github_token else 'Not configured'}")
         logger.info(f"  Email: {'Configured' if self.notification_email else 'Not configured'}")
+        logger.info(f"  Pushover: {'Configured' if self.pushover_token and self.pushover_user else 'Not configured'}")
+        logger.info(f"  Pushbullet: {'Configured' if self.pushbullet_token else 'Not configured'}")
+        logger.info(f"  ntfy: {'Configured' if self.ntfy_topic else 'Not configured'}")
         logger.info(f"  Webhook: {'Configured' if self.webhook_url else 'Not configured'}")
         logger.info(f"  Check interval: {self.check_interval} seconds")
         logger.info(f"  Request timeout: {self.request_timeout} seconds")

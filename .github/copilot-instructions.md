@@ -17,7 +17,11 @@ This project monitors the Berlin service website for available appointments usin
 - GitHub Actions workflow with cron scheduling
 - Web scraping of https://service.berlin.de/dienstleistung/324591/
 - Automated appointment checking every few minutes
-- Multiple notification methods (GitHub Issues, email, webhooks)
+- Multiple notification methods:
+  - GitHub Issues (automatic)
+  - Mobile push notifications (Pushover, Pushbullet, ntfy.sh)
+  - Email notifications
+  - Webhook notifications (Discord, Slack, etc.)
 - Environment variables for configuration
 - No infrastructure costs (runs on GitHub's servers)
 

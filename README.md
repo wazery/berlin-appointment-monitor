@@ -7,6 +7,7 @@ A GitHub Actions-powered tool that monitors the Berlin service website for avail
 - **Automated Monitoring**: Runs every 5 minutes during business hours using GitHub Actions
 - **Multiple Notification Methods**: 
   - GitHub Issues (automatic)
+  - **Mobile Push Notifications** (Pushover, Pushbullet, ntfy.sh)
   - Email notifications
   - Webhook notifications (Discord, Slack, etc.)
 - **Zero Infrastructure Costs**: Runs entirely on GitHub's servers
@@ -21,9 +22,21 @@ git clone https://github.com/your-username/berlin-appointment-monitor.git
 cd berlin-appointment-monitor
 ```
 
-### 2. Configure GitHub Secrets
+### 2. Configure Secrets
 
 Go to your repository Settings → Secrets and variables → Actions, and add these optional secrets:
+
+#### Mobile Push Notifications (Recommended - Easy Setup)
+
+**Option 1: Pushover (Recommended)**
+- `PUSHOVER_TOKEN`: Your Pushover app token ([create app](https://pushover.net/apps/build))
+- `PUSHOVER_USER`: Your Pushover user key ([find here](https://pushover.net/))
+
+**Option 2: Pushbullet**
+- `PUSHBULLET_TOKEN`: Your Pushbullet access token ([get token](https://www.pushbullet.com/#settings/account))
+
+**Option 3: ntfy.sh (Free, No Account)**
+- `NTFY_TOPIC`: Your unique topic name (e.g., `berlin-appointments-yourname`)
 
 #### Email Notifications (Optional)
 - `NOTIFICATION_EMAIL`: Your Gmail address
@@ -48,6 +61,27 @@ You can manually trigger the monitor:
 2. Click "Run workflow"
 3. Check the results in the workflow logs
 
+## 📱 Mobile Push Notification Setup
+
+### Pushover (Recommended - $5 one-time)
+1. Download the Pushover app on your phone
+2. Create account at [pushover.net](https://pushover.net/)
+3. Create a new app at [pushover.net/apps/build](https://pushover.net/apps/build)
+4. Add `PUSHOVER_TOKEN` (app token) and `PUSHOVER_USER` (user key) to GitHub Secrets
+
+### Pushbullet (Free tier available)
+1. Download the Pushbullet app on your phone
+2. Create account at [pushbullet.com](https://www.pushbullet.com/)
+3. Get your access token from [pushbullet.com/#settings/account](https://www.pushbullet.com/#settings/account)
+4. Add `PUSHBULLET_TOKEN` to GitHub Secrets
+
+### ntfy.sh (Completely Free)
+1. Download the ntfy app on your phone
+2. Choose a unique topic name (e.g., `berlin-appointments-yourname123`)
+3. Subscribe to the topic in the app: `ntfy.sh/your-topic-name`
+4. Add `NTFY_TOPIC` (your topic name) to GitHub Secrets
+5. No account needed!
+
 ## 📋 How It Works
 
 1. **GitHub Actions** runs the monitor on a schedule (every 5 minutes during business hours)
@@ -64,6 +98,10 @@ You can manually trigger the monitor:
 | `CHECK_INTERVAL` | Check interval in seconds | 300 | No |
 | `REQUEST_TIMEOUT` | HTTP request timeout | 30 | No |
 | `LOG_LEVEL` | Logging level | INFO | No |
+| `PUSHOVER_TOKEN` | Pushover app token | - | No |
+| `PUSHOVER_USER` | Pushover user key | - | No |
+| `PUSHBULLET_TOKEN` | Pushbullet access token | - | No |
+| `NTFY_TOPIC` | ntfy.sh topic name | - | No |
 | `NOTIFICATION_EMAIL` | Email for notifications | - | No |
 | `EMAIL_PASSWORD` | Email app password | - | No |
 | `WEBHOOK_URL` | Webhook URL for notifications | - | No |
@@ -137,6 +175,18 @@ pytest tests/
 ```
 
 ## 📧 Notification Examples
+
+### Mobile Push Notification (Pushover)
+- **Title**: "🎉 Berlin Service Appointments Available!"
+- **Message**: Detailed appointment information with location and direct links
+- **Priority**: High priority with attention-grabbing sound
+- **Instant delivery** to your phone
+
+### Mobile Push Notification (ntfy.sh)
+- **Title**: "🎉 Berlin Service Appointments Available!"
+- **Message**: Rich notification with appointment details
+- **Tags**: `appointment`, `berlin`
+- **Free service**, no account required
 
 ### GitHub Issue
 - **Title**: "🎉 Berlin Service Appointments Available!"
